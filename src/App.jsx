@@ -1,19 +1,16 @@
-// src/App.jsx
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { useState, createContext, useContext } from 'react';
-import Navbar from './components/Navbar.jsx';
-import Home from './pages/Home.jsx';
-import Shop from './pages/Shop.jsx';
-import Cart from './pages/Cart.jsx';
-import CartSummaryModal from './components/CartSummaryModal.jsx';
-import CartDetailsModal from './components/CartDetailsModal.jsx';
+import AppRouter from './router/AppRouter.jsx';
 import './styles/main.css';
 
 // Cart Context for state management
 const CartContext = createContext();
 
 export function useCart() {
-  return useContext(CartContext);
+  const context = useContext(CartContext);
+  if (!context) {
+    throw new Error('useCart must be used within CartProvider');
+  }
+  return context;
 }
 
 function App() {
@@ -26,7 +23,9 @@ function App() {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
         return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + quantity } : item
+          item.id === product.id 
+            ? { ...item, quantity: item.quantity + quantity } 
+            : item
         );
       }
       return [...prevCart, { ...product, quantity }];
@@ -37,7 +36,9 @@ function App() {
   const updateQuantity = (id, delta) => {
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item
+        item.id === id 
+          ? { ...item, quantity: Math.max(0, item.quantity + delta) } 
+          : item
       ).filter((item) => item.quantity > 0)
     );
   };
@@ -46,57 +47,22 @@ function App() {
     setCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2);
-
-  const router = createBrowserRouter([
-    {
-      path: '/',
-      element: (
-        <>
-          <Navbar cartCount={cartCount} />
-          <Home />
-        </>
-      ),
-    },
-    {
-      path: '/shop',
-      element: (
-        <>
-          <Navbar cartCount={cartCount} />
-          <Shop addToCart={addToCart} />
-        </>
-      ),
-    },
-    {
-      path: '/cart',
-      element: (
-        <>
-          <Navbar cartCount={cartCount} />
-          <Cart cart={cart} updateQuantity={updateQuantity} removeItem={removeItem} totalAmount={totalAmount} />
-        </>
-      ),
-    },
-  ]);
+  const cartContextValue = {
+    cart,
+    addToCart,
+    updateQuantity,
+    removeItem,
+  };
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, updateQuantity, removeItem, totalAmount }}>
-      <RouterProvider router={router} />
-      {showSummaryModal && (
-        <CartSummaryModal
-          totalAmount={totalAmount}
-          onViewItems={() => {
-            setShowSummaryModal(false);
-            setShowDetailsModal(true);
-          }}
-          onClose={() => setShowSummaryModal(false)}
-        />
-      )}
-      {showDetailsModal && (
-        <CartDetailsModal
-          onClose={() => setShowDetailsModal(false)}
-        />
-      )}
+    <CartContext.Provider value={cartContextValue}>
+      <AppRouter
+        cart={cart}
+        showSummaryModal={showSummaryModal}
+        showDetailsModal={showDetailsModal}
+        setShowSummaryModal={setShowSummaryModal}
+        setShowDetailsModal={setShowDetailsModal}
+      />
     </CartContext.Provider>
   );
 }
